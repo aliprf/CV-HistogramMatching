@@ -70,7 +70,7 @@ def generate_histogram(img, print, index):
     '''normalize Histogram'''
     gr_hist /= (gr_img.shape[0] * gr_img.shape[1])
     if print:
-        print_histogram(gr_hist, name="eq_"+str(index), title="Normalized Histogram")
+        print_histogram(gr_hist, name="neq_"+str(index), title="Normalized Histogram")
     return gr_hist, gr_img
 
 
@@ -88,6 +88,35 @@ def equalize_histogram(img, histo, L):
     '''creating new histogram'''
     hist_img, _ = generate_histogram(en_img, print=False, index=index)
     print_img(img=en_img, histo_new=hist_img, histo_old=histo, index=str(index), L=L)
+    return eq_histo
+
+
+def find_value_target(val, target_arr):
+    key = np.where(target_arr == val)[0]
+
+    if len(key) == 0:
+        key = find_value_target(val+1, target_arr)
+        if len(key) == 0:
+            key = find_value_target(val-1, target_arr)
+    vvv = key[0]
+    return vvv
+
+
+def match_histogram(inp_img, hist_input, e_hist_input, e_hist_target, _print=True):
+    '''map from e_inp_hist to 'target_hist '''
+    en_img = np.zeros_like(inp_img)
+    tran_hist = np.zeros_like(e_hist_input)
+    for i in range(len(e_hist_input)):
+        tran_hist[i] = find_value_target(val=e_hist_input[i], target_arr=e_hist_target)
+    print_histogram(tran_hist, name="trans_hist_", title="Transferred Histogram")
+    '''enhance image as well:'''
+    for x_pixel in range(inp_img.shape[0]):
+        for y_pixel in range(inp_img.shape[1]):
+            pixel_val = int(inp_img[x_pixel, y_pixel])
+            en_img[x_pixel, y_pixel] = tran_hist[pixel_val]
+    '''creating new histogram'''
+    hist_img, _ = generate_histogram(en_img, print=False, index=3)
+    print_img(img=en_img, histo_new=hist_img, histo_old=hist_input, index=str(3), L=L)
 
 
 if __name__ == '__main__':
@@ -96,12 +125,13 @@ if __name__ == '__main__':
     imgs = load_images()
     print("\r\ngenerating HistogramS:")
     gr_img_arr = []
-    grayscale_histogram_arr = []
-    eq_histogram_arr = []
+    gr_hist_arr = []
+    eq_hist_arr = []
     index = 0
     for img in tqdm(imgs):
         hist_img, gr_img = generate_histogram(img, print=True, index=index)
-        grayscale_histogram_arr.append(hist_img)
+        gr_hist_arr.append(hist_img)
         gr_img_arr.append(gr_img)
-        eq_histogram_arr.append(equalize_histogram(gr_img, hist_img, L))
+        eq_hist_arr.append(equalize_histogram(gr_img, hist_img, L))
         index += 1
+    match_histogram(inp_img=gr_img_arr[0], hist_input=gr_hist_arr[0], e_hist_input=eq_hist_arr[0], e_hist_target=eq_hist_arr[1])
